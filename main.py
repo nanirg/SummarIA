@@ -2,9 +2,7 @@ import spacy
 import numpy as np
 from nltk.cluster import cosine_distance
 import networkx as nx
-from sympy.combinatorics.graycode import GrayCode
 import math
-from PSO import PSO
 import requests
 
 class Summarizer:
@@ -46,13 +44,6 @@ class Summarizer:
             def similarity_spaCy(texta,textb):
                 return texta.similarity(textb)
             pairwise_similarity = similarity_spaCy
-        if method == "sentence_encoder":
-            url = 'http://127.0.0.1:5000/results'
-            r = requests.post(url, json={'text': self.processed_text.text})
-            sentences = r.json()
-            def similarity_tf(vec1,vec2):
-                return 1 - cosine_distance(vec1,vec2)
-            pairwise_similarity = similarity_tf
 
         similarity_matrix = np.zeros((len(sentences), len(sentences)))
         for idx1 in range(len(sentences)):
@@ -74,41 +65,11 @@ class Summarizer:
             print(n_sentences_preserve)
             idx_preserve = [i for (_,i) in ranked_sentence[0:n_sentences_preserve]]
             summary = [(sentences[a], str(0+(a in idx_preserve))) for a in range(len(sentences))]
-        elif method == "PSO":
-            def within_diferentiation(simm_matrix,code):
-                # REFACTOR
-                indexes = [i for i in range(len(code)) if code[i] == '1']
-                difs = np.zeros((len(code), len(code)))
-                for i in indexes:
-                    for j in indexes:
-                        if i != j:
-                            difs[i][j] = 1 - simm_matrix[i][j]
-                            if math.isnan(difs[i][j]):
-                                difs[i][j] = 1
-                if np.count_nonzero(difs) == 0:
-                    return 0
-                return np.sum(difs) / np.count_nonzero(difs)
-            def score(config):
-                a = GrayCode(len(sentences))
-                code = list(a.generate_gray())[config]
-                sentence_list = [sentences[i].text for i in range(len(code)) if code[i] == '1']
-                if sentence_list ==[]:
-                    retention = 0
-                else:
-                    doc_propossed_summary =  self.nlp(" ".join(sentence_list))
-                    retention = self.processed_text.similarity(doc_propossed_summary)
-                diferentiation = within_diferentiation(self.simm_matrix,code)
-                #print(diferentiation)
-                return retention + diferentiation
-            pso = PSO(n_pop=20, size =len(sentences))
-            code, cum_scores = pso.findBest(score, epochs = 10)
-            a = GrayCode(len(sentences))
-            code = list(a.generate_gray())[code]
-            summary = [(sentences[a].text , code[a]) for a in range(len(code))]
+       
         return summary
 
 if __name__ == '__main__':
-    file = open('.\Texts\\testfile.txt', "r", encoding='utf8')
+    file = open('./Texts/testfile.txt', "r", encoding='utf8')
     text = file.read()
     summarizer = Summarizer()
     summarizer.do_process(text)
